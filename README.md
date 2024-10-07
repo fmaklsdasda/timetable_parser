@@ -1,6 +1,6 @@
 # time parser 
 
-TODO: description, 
+Проект для парсинга расписания занятий из таблиц и отображения всех занятий для выбранного преподавателя. Инструмент извлекает и организует данные из расписания, чтобы упростить быстрый доступ к расписанию конкретного преподавателя.
 
 ## installation 
 
@@ -12,4 +12,6 @@ pip install -r ./requirements.txt
 
 ## usage 
 
-Enter the teacher's last name in the appropriate field
+```bash
+python ./gui.py  
+```
