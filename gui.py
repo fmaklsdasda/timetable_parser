@@ -17,14 +17,20 @@ class ScheduleApp:
         self.teachers_listbox.pack(pady=20, fill=tk.BOTH, expand=True)
         self.teachers_listbox.bind('<<ListboxSelect>>', self.show_teacher_info)
 
-        self.tree = ttk.Treeview(root, columns=("Дата", "Номер пары", "Предмет"), show='headings', height=10)
-        self.tree.heading("Дата", text="Дата")
-        self.tree.heading("Номер пары", text="Номер пары")
-        self.tree.heading("Предмет", text="Предмет")
-        self.tree.pack(pady=20, fill=tk.BOTH, expand=True)
+        self.tree = ttk.Treeview(root, columns=("dt", "pair", "subj", "groups"), show='headings', height=10)
 
-        self.parser = None
-        self.teachers = {}
+        self.tree.heading("dt", text="Дата")
+        self.tree.heading("pair", text="Номер пары")
+        self.tree.heading("subj", text="Предмет")
+        self.tree.heading("groups", text="Группы")
+
+        self.tree.column("dt", width=100, anchor='center')
+        self.tree.column("pair", width=60, anchor='center')
+
+        self.tree.column("subj", width=250, anchor='w')
+        self.tree.column("groups", width=250, anchor='w')  
+
+        self.tree.pack(pady=20, fill=tk.BOTH, expand=True)
 
     def load_file(self):
         file_path = filedialog.askopenfilename(
@@ -73,7 +79,7 @@ class ScheduleApp:
             for date, entries in grouped_schedule.items():
                 for entry in entries:
                     item = items.get(entry['mem'], 1)
-                    row_id = self.tree.insert("", tk.END, values=(date, entry['lesson_num'], entry['subj']))
+                    row_id = self.tree.insert("", tk.END, values=(date, entry['lesson_num'], entry['subj'], ", ".join(entry['groups'])))
                     if item > 1:
                         self.tree.tag_configure('red', background='red')
                         self.tree.item(row_id, tags=('red',))

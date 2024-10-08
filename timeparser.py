@@ -12,17 +12,18 @@ class ScheduleParser:
         self.date_column = 1
         self.first_row = 2
         self.last_date_col = None
+        self.groups_row = None
 
-    def get_merged_cell_value(self, cell):
+    def get_merged_cell_value(self, cell: Cell):
         if isinstance(cell, MergedCell):
             for merged_range in self.ws.merged_cells.ranges:
                 if cell.coordinate in merged_range:
                     if merged_range.min_col == cell.column:
                         top_left_cell = self.ws.cell(row=merged_range.min_row, column=merged_range.min_col)
-                        return top_left_cell.value
+                        return top_left_cell.value, range(merged_range.min_row, merged_range.max_row)
         else:
-            return cell.value
-        return None
+            return cell.value, [cell.row]
+        return None, None
 
     def parse_date(self, col: str):
         if col:
@@ -34,7 +35,7 @@ class ScheduleParser:
         return False
 
     def parse_subject(self, cell: Cell):
-        val = self.get_merged_cell_value(cell)
+        val, range = self.get_merged_cell_value(cell)
         if val:
             pattern = r'([А-ЯЁа-яё]+ [А-ЯЁ]\.[А-ЯЁ]\.)'
             match = re.search(pattern, val, re.MULTILINE)
@@ -42,7 +43,7 @@ class ScheduleParser:
                 parts = re.split(pattern, val)
                 subject = parts[0].strip()
                 teacher = re.sub(r'\s+', ' ', match.group(1))
-                return (subject, teacher)
+                return (subject, teacher, range)
         return False
 
     def parse_schedule(self):
@@ -66,6 +67,11 @@ class ScheduleParser:
                 dt = self.parse_date(date_col)
                 if dt:
                     self.last_date_col = dt
+                else:
+                    has_group_row_mark = date_col.find('День')
+                    if has_group_row_mark > -1:
+                        self.groups_row = row
+
             else:
                 dt = self.last_date_col
 
@@ -73,8 +79,15 @@ class ScheduleParser:
                 for col in row[2:]:
                     result = self.parse_subject(col)
                     if result:
-                        subj, teacher = result
-                        pair = {"subj": subj, "dt": dt, "lesson_num": lesson_num}
+                        subj, teacher, range = result
+                        groups = []
+                        if range:
+                            for row_num in range:
+                                group = self.groups_row[row_num]
+                                if group:
+                                    for g in group.value.split("\n"):
+                                        groups.append(g.strip())
+                        pair = {"subj": subj, "groups": groups, "dt": dt, "lesson_num": lesson_num}
                         if teacher in self.teachers:
                             self.teachers[teacher].append(pair)
                         else:
