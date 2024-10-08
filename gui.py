@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
-from timeparser import ScheduleParser  
+from tkinter import ttk
+from timeparser import ScheduleParser
 
 class ScheduleApp:
     def __init__(self, root):
@@ -16,8 +17,11 @@ class ScheduleApp:
         self.teachers_listbox.pack(pady=20, fill=tk.BOTH, expand=True)
         self.teachers_listbox.bind('<<ListboxSelect>>', self.show_teacher_info)
 
-        self.info_text = tk.Text(root, width=60, height=10, state='disabled')
-        self.info_text.pack(pady=20, fill=tk.BOTH, expand=True)
+        self.tree = ttk.Treeview(root, columns=("Дата", "Номер пары", "Предмет"), show='headings', height=10)
+        self.tree.heading("Дата", text="Дата")
+        self.tree.heading("Номер пары", text="Номер пары")
+        self.tree.heading("Предмет", text="Предмет")
+        self.tree.pack(pady=20, fill=tk.BOTH, expand=True)
 
         self.parser = None
         self.teachers = {}
@@ -47,27 +51,32 @@ class ScheduleApp:
         if selection:
             teacher_name = self.teachers_listbox.get(selection[0])
 
-          
-            self.info_text.config(state='normal')
-            self.info_text.delete(1.0, tk.END)
+            for item in self.tree.get_children():
+                self.tree.delete(item)
 
             schedule = self.teachers[teacher_name]
-            entries = []
+
+            schedule = sorted(schedule, key=lambda x: x['dt'])
+
+            grouped_schedule = {}
+            items = dict()
             for entry in schedule:
                 dt = entry['dt'].strftime('%d.%m.%Y')
                 num = entry['lesson_num']
                 mem_str = dt + str(num)
-                if mem_str in entries:
-                    self.info_text.insert(tk.END, f"ДУБЛИКАТ!!!\n")
-                else:
-                    entries.append(mem_str)
-                self.info_text.insert(tk.END, f"Дата: {dt}\n")
-                self.info_text.insert(tk.END, f"Номер пары: {num}\n")
-                self.info_text.insert(tk.END, f"Предмет: {entry['subj']}\n")
-                self.info_text.insert(tk.END, "-"*40 + "\n")
+                if dt not in grouped_schedule:
+                    grouped_schedule[dt] = []
+                items[mem_str] = items.get(mem_str, 0) + 1
+                entry['mem'] = mem_str
+                grouped_schedule[dt].append(entry)
 
-            self.info_text.config(state='disabled')
-
+            for date, entries in grouped_schedule.items():
+                for entry in entries:
+                    item = items.get(entry['mem'], 1)
+                    row_id = self.tree.insert("", tk.END, values=(date, entry['lesson_num'], entry['subj']))
+                    if item > 1:
+                        self.tree.tag_configure('red', background='red')
+                        self.tree.item(row_id, tags=('red',))
 if __name__ == "__main__":
     root = tk.Tk()
     app = ScheduleApp(root)
