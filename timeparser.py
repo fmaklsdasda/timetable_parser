@@ -18,11 +18,10 @@ class ScheduleParser:
         if isinstance(cell, MergedCell):
             for merged_range in self.ws.merged_cells.ranges:
                 if cell.coordinate in merged_range:
-                    if merged_range.min_col == cell.column:
-                        top_left_cell = self.ws.cell(row=merged_range.min_row, column=merged_range.min_col)
-                        return top_left_cell.value, range(merged_range.min_row, merged_range.max_row)
+                    top_left_cell = self.ws.cell(row=merged_range.min_row, column=merged_range.min_col)
+                    return top_left_cell.value, merged_range
         else:
-            return cell.value, [cell.row]
+            return cell.value, None
         return None, None
 
     def parse_date(self, col: str):
@@ -35,7 +34,7 @@ class ScheduleParser:
         return False
 
     def parse_subject(self, cell: Cell):
-        val, range = self.get_merged_cell_value(cell)
+        val, merged_range = self.get_merged_cell_value(cell)
         if val:
             pattern = r'([А-ЯЁа-яё]+ [А-ЯЁ]\.[А-ЯЁ]\.)'
             match = re.search(pattern, val, re.MULTILINE)
@@ -43,7 +42,7 @@ class ScheduleParser:
                 parts = re.split(pattern, val)
                 subject = parts[0].strip()
                 teacher = re.sub(r'\s+', ' ', match.group(1))
-                return (subject, teacher, range)
+                return (subject, teacher, merged_range)
         return False
 
     def parse_schedule(self):
@@ -79,14 +78,24 @@ class ScheduleParser:
                 for col in row[2:]:
                     result = self.parse_subject(col)
                     if result:
-                        subj, teacher, range = result
+                        subj, teacher, merged_range = result
                         groups = []
-                        if range:
-                            for row_num in range:
-                                group = self.groups_row[row_num]
-                                if group:
-                                    for g in group.value.split("\n"):
+                        if merged_range:
+                            start_col = merged_range.min_col
+                            end_col = merged_range.max_col
+                            for group_col in range(start_col, end_col + 1):
+                                group_cell = self.ws.cell(row=self.groups_row[0].row, column=group_col)
+                                group_value = group_cell.value
+                                if group_value:
+                                    for g in group_value.split("\n"):
                                         groups.append(g.strip())
+                        else:
+                            group_cell = self.ws.cell(row=self.groups_row[0].row, column=col.column)
+                            group_value = group_cell.value
+                            if group_value:
+                                for g in group_value.split("\n"):
+                                    groups.append(g.strip())
+
                         pair = {"subj": subj, "groups": groups, "dt": dt, "lesson_num": lesson_num}
                         if teacher in self.teachers:
                             self.teachers[teacher].append(pair)
@@ -95,4 +104,3 @@ class ScheduleParser:
 
     def get_teachers_schedule(self):
         return self.teachers
-

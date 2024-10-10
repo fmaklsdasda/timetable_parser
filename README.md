@@ -15,3 +15,12 @@ pip install -r ./requirements.txt
 ```bash
 python ./gui.py  
 ```
+
+## build 
+
+```bash
+pip install pyinstaller
+pyinstaller --onefile gui.py
+pyinstaller --onefile --icon=icon.ico gui.py
+
+```
