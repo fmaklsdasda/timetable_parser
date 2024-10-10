@@ -15,13 +15,13 @@ class ScheduleParser:
         self.groups_row = None
 
     def get_merged_cell_value(self, cell: Cell):
-        if isinstance(cell, MergedCell):
-            for merged_range in self.ws.merged_cells.ranges:
+
+        for merged_range in self.ws.merged_cells.ranges:
+            if merged_range.min_col == cell.column:
                 if cell.coordinate in merged_range:
                     top_left_cell = self.ws.cell(row=merged_range.min_row, column=merged_range.min_col)
                     return top_left_cell.value, merged_range
-        else:
-            return cell.value, None
+
         return None, None
 
     def parse_date(self, col: str):
@@ -35,14 +35,17 @@ class ScheduleParser:
 
     def parse_subject(self, cell: Cell):
         val, merged_range = self.get_merged_cell_value(cell)
-        if val:
+
+        result = val if val else cell.value
+        if result:
             pattern = r'([А-ЯЁа-яё]+ [А-ЯЁ]\.[А-ЯЁ]\.)'
-            match = re.search(pattern, val, re.MULTILINE)
+            match = re.search(pattern, result, re.MULTILINE)
             if match:
-                parts = re.split(pattern, val)
+                parts = re.split(pattern, result)
                 subject = parts[0].strip()
                 teacher = re.sub(r'\s+', ' ', match.group(1))
                 return (subject, teacher, merged_range)
+
         return False
 
     def parse_schedule(self):
@@ -88,13 +91,18 @@ class ScheduleParser:
                                 group_value = group_cell.value
                                 if group_value:
                                     for g in group_value.split("\n"):
-                                        groups.append(g.strip())
+                                        val = g.strip()
+                                        if val not in groups:
+                                            groups.append(val)
                         else:
                             group_cell = self.ws.cell(row=self.groups_row[0].row, column=col.column)
                             group_value = group_cell.value
                             if group_value:
                                 for g in group_value.split("\n"):
-                                    groups.append(g.strip())
+                                    val = g.strip()
+                                    if val not in groups:
+                                        groups.append(val)
+                                        
 
                         pair = {"subj": subj, "groups": groups, "dt": dt, "lesson_num": lesson_num}
                         if teacher in self.teachers:
@@ -104,3 +112,8 @@ class ScheduleParser:
 
     def get_teachers_schedule(self):
         return self.teachers
+
+
+if __name__ == "__main__":
+
+    app = ScheduleParser("./data/schedule.xlsx")
